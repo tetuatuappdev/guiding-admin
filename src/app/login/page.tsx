@@ -12,17 +12,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   async function onLogin() {
-    setErr(null);
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+  setErr(null);
+  setLoading(true);
+
+  const r = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       email: email.trim().toLowerCase(),
       password,
-    });
-    setLoading(false);
+    }),
+  });
 
-    if (error) return setErr(error.message);
-    router.push("/");
-  }
+  const j = await r.json();
+  setLoading(false);
+
+  if (!r.ok) return setErr(j?.error ?? "Login failed");
+
+  router.push("/");      // ou router.replace("/")
+  router.refresh();      // important avec App Router
+}
 
   return (
     <div style={{ maxWidth: 420, margin: "60px auto", fontFamily: "system-ui" }}>
