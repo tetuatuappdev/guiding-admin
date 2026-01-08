@@ -10,13 +10,8 @@ export function supabaseServer() {
     {
       cookies: {
         getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          // Next Server Components: setAll est autorisé (Next gère)
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+          // Next versions differ in typing; runtime supports getAll in modern Next
+          return (cookieStore as any).getAll();
         },
       },
     }
