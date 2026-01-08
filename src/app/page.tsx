@@ -1,41 +1,33 @@
 "use client";
 
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { isAdmin } from "@/lib/admin";
-import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const router = useRouter();
-  const [status, setStatus] = useState<"loading"|"ok"|"nope">("loading");
+  const [status, setStatus] = useState<"loading" | "admin" | "nope">("loading");
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
-      if (!user) return router.replace("/login");
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
 
-      const ok = await isAdmin(user.id);
-      if (!ok) {
-        setStatus("nope");
-        return;
-      }
-      setStatus("ok");
+      if (!user) return setStatus("nope");
+
+      const { data, error } = await supabase
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      setStatus(!error && data ? "admin" : "nope");
     })();
-  }, [router]);
+  }, []);
 
-  if (status === "loading") return <p style={{ padding: 20 }}>Loading…</p>;
-  if (status === "nope") return <p style={{ padding: 20 }}>Not admin. Bye.</p>;
+  if (status === "loading") return <p>Loading…</p>;
 
-  return (
-    <div style={{ padding: 20, fontFamily: "system-ui" }}>
-      <h1>Admin dashboard</h1>
-      <ul>
-        <li><a href="/push">Push</a></li>
-        <li><a href="/tours">Tours</a></li>
-        <li><a href="/guides">Guides</a></li>
-      </ul>
-    </div>
-  );
+  console.log("userId?", userId);
+
+  if (status === "nope") return <p>Not admin. Bye.</p>;
+  return <p>Welcome, admin.</p>;
 }
