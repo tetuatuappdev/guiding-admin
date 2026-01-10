@@ -20,13 +20,6 @@ export async function POST(req: NextRequest) {
     }
   );
 
-  const { email, password } = await req.json();
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
-  }
-
-  return res; // cookies set here
+  await supabase.auth.signOut();
+  return res;
 }

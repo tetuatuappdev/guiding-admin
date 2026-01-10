@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+
 export default function Home() {
   const [status, setStatus] = useState<"loading" | "admin" | "nope">("loading");
   const [userId, setUserId] = useState<string | null>(null);

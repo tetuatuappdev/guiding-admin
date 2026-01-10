@@ -20,13 +20,16 @@ export async function POST(req: NextRequest) {
     }
   );
 
-  const { email, password } = await req.json();
+  const { tour_id } = await req.json();
+  if (!tour_id) return NextResponse.json({ ok: false, error: "tour_id missing" }, { status: 400 });
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  // Update
+  const { error } = await supabase
+    .from("tours")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", tour_id);
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
-  }
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-  return res; // cookies set here
+  return res;
 }
