@@ -3,6 +3,12 @@ import { createServerClient } from "@supabase/ssr";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
+  console.log("[MW] path =", req.nextUrl.pathname);
+  console.log("[MW] cookie names =", req.cookies.getAll().map(c => c.name));
+  console.log("[MW] has SUPABASE_URL =", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log("[MW] has ANON_KEY =", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
