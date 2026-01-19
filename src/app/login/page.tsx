@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   if (error) return setErr(error.message);
 
-  router.replace("/");   // ou "/tours"
+  router.replace("/tours");   // ou "/tours"
   router.refresh();
 }
 
