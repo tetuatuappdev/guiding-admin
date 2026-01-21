@@ -14,17 +14,41 @@ export default async function AllowlistPage() {
     .order("created_at", { ascending: false })
     .limit(50);
 
-    const rows = (data ?? []) as AllowlistRow[];
+  const rows = (data ?? []) as AllowlistRow[];
 
   return (
-    <div style={{ maxWidth: 700, margin: "40px auto" }}>
-      <h1>Allowlist</h1>
-      <AllowlistForm />
-      <ul>
-        {rows.map((r) => (
-          <li key={r.email}>{r.email}</li>
-        ))}
-      </ul>
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Guide allowlist</h1>
+          <p className="page-subtitle">
+            Quickly approve new access and track recent additions.
+          </p>
+        </div>
+        <span className="pill">{rows.length} active</span>
+      </div>
+
+      <section className="card">
+        <AllowlistForm />
+      </section>
+
+      <section className="card soft">
+        <h2 className="page-title">Latest approved emails</h2>
+        {rows.length === 0 ? (
+          <div className="callout">
+            <strong>No emails in the list.</strong>
+            <span className="muted">
+              Add the first access using the form above.
+            </span>
+          </div>
+        ) : (
+          <ul className="list">
+            {rows.map((r) => (
+              <li key={r.email}>{r.email}</li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

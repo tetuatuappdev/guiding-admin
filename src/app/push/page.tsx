@@ -17,12 +17,24 @@ export default function PushPage() {
   }
 
   return (
-    <div style={{ padding: 20, fontFamily: "system-ui" }}>
-      <h1>Push</h1>
-      <button onClick={testPush} style={{ padding: 12 }}>
-        Send test push to me
-      </button>
-      <pre style={{ marginTop: 16, whiteSpace: "pre-wrap" }}>{msg}</pre>
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Push</h1>
+          <p className="page-subtitle">
+            Verify notification delivery on your device.
+          </p>
+        </div>
+      </div>
+      <section className="card">
+        <div className="inline-actions">
+          <button className="button" onClick={testPush}>
+            Send test push
+          </button>
+          <span className="muted">Live feedback in the console.</span>
+        </div>
+        <pre className="pre">{msg}</pre>
+      </section>
     </div>
   );
 }

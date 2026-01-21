@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     .update({ status: "paid" })
     .eq("id", payment_id);
 
-    // ... après update status = "paid"
+    // ... after update status = "paid"
 
 const { data: pay2 } = await supabase
   .from("tour_payments")
@@ -63,7 +63,7 @@ if (process.env.ADMIN_NOTIFY_URL && pay2?.guide_id && pay2?.slot_id) {
     .eq("id", pay2.slot_id)
     .maybeSingle();
 
-  // notif "best effort" : si ça foire, on ne casse pas le paiement
+  // best-effort notify: failure should not break the payment
   try {
     await fetch(process.env.ADMIN_NOTIFY_URL, {
       method: "POST",

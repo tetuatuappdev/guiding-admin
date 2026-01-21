@@ -24,26 +24,40 @@ export default function LoginPage() {
 
   if (error) return setErr(error.message);
 
-  router.replace("/tours");   // ou "/tours"
+  router.replace("/tours"); // or "/tours"
   router.refresh();
 }
 
 
   return (
-    <div style={{ maxWidth: 420, margin: "60px auto", fontFamily: "system-ui" }}>
-      <h1>Admin</h1>
+    <div className="login-shell">
+      <div className="login-card">
+        <h1>Admin access</h1>
+        <p className="helper">
+          Sign in to manage payments and guide access.
+        </p>
 
-      <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
-        style={{ width: "100%", padding: 10, marginTop: 10 }} />
-      <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-        style={{ width: "100%", padding: 10, marginTop: 10 }} />
+        <div className="stack login-stack">
+          <input
+            className="input"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            className="input"
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button className="button" onClick={onLogin} disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </button>
+        </div>
 
-      <button onClick={onLogin} disabled={loading}
-        style={{ width: "100%", padding: 12, marginTop: 12 }}>
-        {loading ? "Login..." : "Login"}
-      </button>
-
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
+        {err && <p className="error login-error">{err}</p>}
+      </div>
     </div>
   );
 }

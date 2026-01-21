@@ -24,12 +24,20 @@ export default function AllowlistForm() {
   }
 
   return (
-    <div style={{ margin: "16px 0" }}>
-      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email du guide" />
-      <button onClick={onAdd} disabled={isPending} style={{ marginLeft: 8 }}>
-        {isPending ? "..." : "Add"}
-      </button>
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
+    <div className="stack">
+      <label className="muted">New approved email</label>
+      <div className="inline-actions">
+        <input
+          className="input"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="guide email"
+        />
+        <button className="button" onClick={onAdd} disabled={isPending}>
+          {isPending ? "Adding..." : "Add"}
+        </button>
+      </div>
+      {err && <p className="error">{err}</p>}
     </div>
   );
 }

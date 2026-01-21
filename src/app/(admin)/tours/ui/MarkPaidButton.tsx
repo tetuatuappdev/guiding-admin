@@ -29,10 +29,10 @@ export default function MarkPaidButton({ paymentId }: { paymentId: string }) {
 
   return (
     <div>
-      <button disabled={loading} onClick={onClick}>
-        {loading ? "Paying..." : "Mark paid"}
+      <button className="button danger" disabled={loading} onClick={onClick}>
+        {loading ? "Marking..." : "Mark paid"}
       </button>
-      {err && <p style={{ color: "crimson", marginTop: 6 }}>{err}</p>}
+      {err && <p className="error mt-xs">{err}</p>}
     </div>
   );
 }
