@@ -177,6 +177,16 @@ textarea {
   font-weight: 600;
 }
 
+.stat-value-inline {
+  display: flex;
+  align-items: center;
+}
+
+.stat-value-inline .button {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
 .stat-label {
   color: var(--muted);
   font-size: 0.9rem;
@@ -306,6 +316,15 @@ button:hover {
 .button.danger:hover {
   background: #a63023;
   box-shadow: 0 12px 20px rgba(160, 48, 35, 0.28);
+}
+
+.button.success {
+  background: #2f7a45;
+}
+
+.button.success:hover {
+  background: #27663a;
+  box-shadow: 0 12px 20px rgba(39, 102, 58, 0.28);
 }
 
 .inline-actions {

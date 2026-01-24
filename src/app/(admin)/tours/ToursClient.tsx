@@ -20,10 +20,49 @@ async function markPaid(slotId: string) {
 export default function ToursClient() {
   const [rows, setRows] = useState<any[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [month, setMonth] = useState("");
+  const [includePaid, setIncludePaid] = useState(false);
+  const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
     (async () => {
       setErr(null);
+      let token = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+      if (!token) {
+        const refresh = await supabase.auth.refreshSession();
+        if (refresh.error) {
+          setErr(refresh.error.message);
+          return;
+        }
+        token = refresh.data.session?.access_token ?? null;
+      }
+      if (!token) {
+        setErr("Not logged in.");
+        return;
+      }
+
+      const resp = await fetch("/api/payments/months", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await resp.json();
+      if (!resp.ok || !body.ok) {
+        setErr(body.error ?? "Failed to load months.");
+        return;
+      }
+      setMonthOptions(body.months ?? []);
+      if (!month && body.months?.[0]?.value) {
+        setMonth(body.months[0].value);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      setErr(null);
+      if (!month) {
+        setRows([]);
+        return;
+      }
 
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
@@ -40,24 +79,49 @@ export default function ToursClient() {
         .eq("user_id", uid ?? "")
         .maybeSingle();
 
-      const { data: pays, error: payErr } = await supabase
-        .from("tour_payments")
-        .select("id, slot_id, guide_id, status, amount_pence")
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
+      const [yearStr, monthStr] = month.split("-");
+      const yearNum = Number(yearStr);
+      const monthNum = Number(monthStr);
+      if (!yearNum || !monthNum) return setErr("Invalid month selected.");
 
-      if (payErr) return setErr(payErr.message);
-
-      const slotIds = (pays ?? []).map(p => p.slot_id).filter(Boolean);
-      if (slotIds.length === 0) return setRows([]);
+      const start = `${yearStr}-${monthStr}-01`;
+      const endDate = new Date(yearNum, monthNum, 0);
+      const end = `${yearStr}-${monthStr}-${String(endDate.getDate()).padStart(2, "0")}`;
 
       const { data: slots, error: slotErr } = await supabase
         .from("schedule_slots")
         .select("id, slot_date, slot_time, status")
-        .in("id", slotIds)
+        .not("guide_id", "is", null)
+        .gte("slot_date", start)
+        .lte("slot_date", end)
         .eq("status", "completed");
+      const orderedSlots = (slots ?? [])
+        .slice()
+        .sort((a: any, b: any) => {
+          const dateA = `${a.slot_date ?? ""} ${a.slot_time ?? ""}`;
+          const dateB = `${b.slot_date ?? ""} ${b.slot_time ?? ""}`;
+          return dateA.localeCompare(dateB);
+        });
 
       if (slotErr) return setErr(slotErr.message);
+
+      const slotIds = orderedSlots.map((s) => s.id).filter(Boolean);
+      if (slotIds.length === 0) return setRows([]);
+
+      let payQuery = supabase
+        .from("tour_payments")
+        .select("id, slot_id, guide_id, status, amount_pence")
+        .in("slot_id", slotIds)
+        .order("created_at", { ascending: false });
+
+      payQuery = includePaid
+        ? payQuery.in("status", ["pending", "paid"])
+        : payQuery.eq("status", "pending");
+
+      const { data: pays, error: payErr } = await payQuery;
+
+      if (payErr) return setErr(payErr.message);
+      if (!pays || pays.length === 0) return setRows([]);
 
       const guideIds = Array.from(new Set((pays ?? []).map(p => p.guide_id).filter(Boolean))) as string[];
       const { data: guides, error: gErr } = await supabase
@@ -70,7 +134,7 @@ export default function ToursClient() {
       const guideById = new Map((guides ?? []).map(g => [g.id, g]));
       const payBySlot = new Map((pays ?? []).map(p => [p.slot_id, p]));
 
-      const merged = (slots ?? []).map(s => {
+      const merged = orderedSlots.map(s => {
         const pay = payBySlot.get(s.id);
         const g = pay?.guide_id ? guideById.get(pay.guide_id) : null;
         const guideLabel = g ? `${g.first_name} ${g.last_name}` : (pay?.guide_id ?? "-");
@@ -79,7 +143,7 @@ export default function ToursClient() {
 
       setRows(merged);
     })();
-  }, []);
+  }, [includePaid, month]);
 
   const totalAmount =
     rows.reduce((sum, r) => sum + (r.payment?.amount_pence ?? 0), 0) / 100;
@@ -97,6 +161,39 @@ export default function ToursClient() {
         </div>
         <span className="pill">{rows.length} items</span>
       </div>
+
+      <section className="card soft">
+        <div className="inline-actions">
+          <span className="muted">Month</span>
+          <select
+            className="input"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            disabled={monthOptions.length === 0}
+          >
+            {monthOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <span className="muted">Payments</span>
+          <button
+            type="button"
+            className={`button ${includePaid ? "ghost" : ""}`}
+            onClick={() => setIncludePaid(false)}
+          >
+            Unpaid only
+          </button>
+          <button
+            type="button"
+            className={`button ${includePaid ? "" : "ghost"}`}
+            onClick={() => setIncludePaid(true)}
+          >
+            Include paid
+          </button>
+        </div>
+      </section>
 
       <section className="stat-grid">
         <div className="stat">
@@ -166,18 +263,24 @@ export default function ToursClient() {
                         ) : (
                           <span className="muted">Invalid ID</span>
                         )}
-                        <button
-                          type="button"
-                          className="button danger"
-                          disabled={!slotId}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (slotId) markPaid(slotId);
-                          }}
-                        >
-                          Mark paid
-                        </button>
+                        {payment?.status === "paid" ? (
+                          <button type="button" className="button success" disabled>
+                            Paid
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="button danger"
+                            disabled={!slotId}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (slotId) markPaid(slotId);
+                            }}
+                          >
+                            Mark paid
+                          </button>
+                        )}
                       </div>
                     ) : (
                       "-"

@@ -33,6 +33,7 @@ export default function TourDetailClient({ slotId }: { slotId: string }) {
   const [slot, setSlot] = useState<SlotRow | null>(null);
   const [payment, setPayment] = useState<PaymentRow | null>(null);
   const [scans, setScans] = useState<TicketScan[]>([]);
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,6 +67,18 @@ export default function TourDetailClient({ slotId }: { slotId: string }) {
         .order("scanned_at", { ascending: false });
       if (scanErr) return setErr(scanErr.message);
       setScans(scanData ?? []);
+
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (token) {
+        const resp = await fetch(`/api/tours/invoice-url?slot_id=${slotId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = await resp.json();
+        if (resp.ok && body?.ok) {
+          setInvoiceUrl(body.url ?? null);
+        }
+      }
     })();
   }, [slotId]);
 
@@ -121,6 +134,18 @@ export default function TourDetailClient({ slotId }: { slotId: string }) {
                 : "-"}
             </div>
             <div className="stat-label">Amount</div>
+          </div>
+          <div className="stat">
+            <div className="stat-value stat-value-inline">
+              {invoiceUrl ? (
+                <a className="button ghost" href={invoiceUrl} target="_blank" rel="noreferrer">
+                  Open invoice
+                </a>
+              ) : (
+                "-"
+              )}
+            </div>
+            <div className="stat-label">Invoice</div>
           </div>
           <div className="stat">
             <div className="stat-value">{totalPaper}</div>

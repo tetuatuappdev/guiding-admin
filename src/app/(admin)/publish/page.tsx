@@ -262,7 +262,13 @@ export default function PublishToursPage() {
             <button type="button" className="button ghost" onClick={onReset}>
               Reset
             </button>
-            <button type="button" className="button" onClick={onPublish} disabled={publishing}>
+            <button
+              type="button"
+              className="button"
+              onClick={onPublish}
+              disabled={publishing || unassignedCount > 0}
+              title={unassignedCount > 0 ? "Assign all slots before publishing." : undefined}
+            >
               {publishing ? "Publishing..." : "Publish"}
             </button>
           </div>

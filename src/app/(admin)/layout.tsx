@@ -23,6 +23,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Publish new tours
               <span className="nav-pill">Next month</span>
             </Link>
+            <Link className="nav-link" href="/edit">
+              Edit current month
+              <span className="nav-pill">Planned</span>
+            </Link>
           </nav>
         </aside>
         <main className="shell-main">{children}</main>

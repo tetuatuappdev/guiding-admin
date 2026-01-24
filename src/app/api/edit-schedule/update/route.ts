@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 
-type PublishSlot = {
-  date: string;
-  time: string;
-  guide_id: string;
+type UpdateRow = {
+  id: string;
+  guide_id: string | null;
 };
 
 const isExpoToken = (token: string) =>
@@ -84,40 +83,58 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
-  const slots = (body?.slots ?? []) as PublishSlot[];
-  if (!Array.isArray(slots) || slots.length === 0) {
-    return NextResponse.json({ ok: false, error: "No slots provided." }, { status: 400 });
+  const updates = (body?.updates ?? []) as UpdateRow[];
+  if (!Array.isArray(updates) || updates.length === 0) {
+    return NextResponse.json({ ok: false, error: "No updates provided." }, { status: 400 });
   }
 
-  const rows = slots
-    .filter((s) => s?.date && s?.time && s?.guide_id)
-    .map((s) => ({
-      slot_date: s.date,
-      slot_time: s.time,
-      guide_id: s.guide_id,
-      status: "planned",
-    }));
-
-  if (rows.length === 0) {
-    return NextResponse.json({ ok: false, error: "No valid slots." }, { status: 400 });
-  }
-
-  const { error: upErr } = await adminClient
+  const ids = updates.map((u) => u.id).filter(Boolean);
+  const { data: beforeRows, error: bErr } = await adminClient
     .from("schedule_slots")
-    .upsert(rows, { onConflict: "slot_date,slot_time" });
+    .select("id, guide_id")
+    .in("id", ids);
 
-  if (upErr) {
+  if (bErr) {
     return NextResponse.json(
-      { ok: false, error: `Failed to publish: ${upErr.message}` },
+      { ok: false, error: `Failed to load current slots: ${bErr.message}` },
       { status: 500 }
     );
   }
 
-  const guideIds = Array.from(new Set(rows.map((r) => r.guide_id)));
+  const beforeMap = new Map((beforeRows ?? []).map((r) => [r.id, r.guide_id]));
+
+  for (const update of updates) {
+    const { error: upErr } = await adminClient
+      .from("schedule_slots")
+      .update({ guide_id: update.guide_id })
+      .eq("id", update.id);
+
+    if (upErr) {
+      return NextResponse.json(
+        { ok: false, error: `Failed to update slots: ${upErr.message}` },
+        { status: 500 }
+      );
+    }
+  }
+
+  const changedGuideIds = new Set<string>();
+  updates.forEach((u) => {
+    const before = beforeMap.get(u.id) ?? null;
+    const after = u.guide_id ?? null;
+    if (before !== after) {
+      if (before) changedGuideIds.add(before);
+      if (after) changedGuideIds.add(after);
+    }
+  });
+
+  if (changedGuideIds.size === 0) {
+    return NextResponse.json({ ok: true, count: updates.length, notifiedUsers: 0, tokens: 0 });
+  }
+
   const { data: guides, error: gErr } = await adminClient
     .from("guides")
     .select("id, user_id")
-    .in("id", guideIds);
+    .in("id", Array.from(changedGuideIds));
 
   if (gErr) {
     return NextResponse.json(
@@ -126,25 +143,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const guideUserIds = Array.from(
+  const userIds = Array.from(
     new Set((guides ?? []).map((g) => g.user_id).filter(Boolean))
   );
-  if (guideUserIds.length === 0) {
-    return NextResponse.json({ ok: true, count: rows.length });
-  }
 
-  const sampleDate = rows[0]?.slot_date;
-  const monthLabel = sampleDate
-    ? new Date(`${sampleDate}T00:00:00`).toLocaleDateString("en-GB", {
-        month: "long",
-        year: "numeric",
-      })
-    : "";
+  if (!userIds.length) {
+    return NextResponse.json({ ok: true, count: updates.length, notifiedUsers: 0, tokens: 0 });
+  }
 
   const { data: tokensRows, error: tErr } = await adminClient
     .from("push_tokens")
     .select("expo_push_token")
-    .in("user_id", guideUserIds);
+    .in("user_id", userIds);
 
   if (tErr) {
     return NextResponse.json(
@@ -157,14 +167,16 @@ export async function POST(req: NextRequest) {
     .map((r) => r.expo_push_token)
     .filter((t) => typeof t === "string" && isExpoToken(t));
 
-  const whenText = monthLabel ? ` for ${monthLabel}` : "";
-  const body = `New tours published${whenText}. You can consult your affected tour on the app.`;
-
   await sendExpoPush(tokens, {
-    title: "New tours published",
-    body,
-    data: { type: "new_tours_published", month: monthLabel, count: rows.length },
+    title: "Schedule updated",
+    body: "Your schedule has been updated, please consult the app.",
+    data: { type: "schedule_updated" },
   });
 
-  return NextResponse.json({ ok: true, count: rows.length });
+  return NextResponse.json({
+    ok: true,
+    count: updates.length,
+    notifiedUsers: userIds.length,
+    tokens: tokens.length,
+  });
 }
