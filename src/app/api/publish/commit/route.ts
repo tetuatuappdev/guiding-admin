@@ -158,11 +158,11 @@ export async function POST(req: NextRequest) {
     .filter((t) => typeof t === "string" && isExpoToken(t));
 
   const whenText = monthLabel ? ` for ${monthLabel}` : "";
-  const body = `New tours published${whenText}. You can consult your affected tour on the app.`;
+  const message = `New tours published${whenText}. You can consult your affected tour on the app.`;
 
   await sendExpoPush(tokens, {
     title: "New tours published",
-    body,
+    body: message,
     data: { type: "new_tours_published", month: monthLabel, count: rows.length },
   });
 
