@@ -84,8 +84,32 @@ export async function GET(req: NextRequest) {
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 1);
 
-  const startIso = toIsoDateLocal(nextMonthStart);
-  const endIso = toIsoDateLocal(nextMonthEnd);
+  const nextStartIso = toIsoDateLocal(nextMonthStart);
+  const nextEndIso = toIsoDateLocal(nextMonthEnd);
+
+  const { count: plannedCount, error: plannedErr } = await adminClient
+    .from("schedule_slots")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "planned")
+    .gte("slot_date", nextStartIso)
+    .lt("slot_date", nextEndIso);
+
+  if (plannedErr) {
+    return NextResponse.json(
+      { ok: false, error: `Failed to load planned tours: ${plannedErr.message}` },
+      { status: 500 }
+    );
+  }
+
+  const targetStart = plannedCount && plannedCount > 0
+    ? new Date(now.getFullYear(), now.getMonth() + 2, 1)
+    : nextMonthStart;
+  const targetEnd = plannedCount && plannedCount > 0
+    ? new Date(now.getFullYear(), now.getMonth() + 3, 1)
+    : nextMonthEnd;
+
+  const startIso = toIsoDateLocal(targetStart);
+  const endIso = toIsoDateLocal(targetEnd);
 
   const { data: availability, error: aErr } = await adminClient
     .from("guide_availability")

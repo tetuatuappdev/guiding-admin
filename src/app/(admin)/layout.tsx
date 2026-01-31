@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="nav-pill">Next month</span>
             </Link>
             <Link className="nav-link" href="/edit">
-              Edit current month
+              Edit planned tours
               <span className="nav-pill">Planned</span>
             </Link>
             <Link className="nav-link" href="/push">
