@@ -8,35 +8,6 @@ type PublishSlot = {
   guide_id: string;
 };
 
-const isExpoToken = (token: string) =>
-  token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[");
-
-const chunk = <T,>(list: T[], size: number) => {
-  const out: T[][] = [];
-  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-  return out;
-};
-
-async function sendExpoPush(tokens: string[], payload: { title: string; body: string; data: any }) {
-  if (!tokens.length) return;
-  const messages = tokens.map((token) => ({
-    to: token,
-    sound: "default",
-    title: payload.title,
-    body: payload.body,
-    data: payload.data,
-  }));
-
-  const batches = chunk(messages, 100);
-  for (const batch of batches) {
-    await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(batch),
-    });
-  }
-}
-
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -141,30 +112,32 @@ export async function POST(req: NextRequest) {
       })
     : "";
 
-  const { data: tokensRows, error: tErr } = await adminClient
-    .from("push_tokens")
-    .select("expo_push_token")
-    .in("user_id", guideUserIds);
-
-  if (tErr) {
-    return NextResponse.json(
-      { ok: false, error: `Failed to load push tokens: ${tErr.message}` },
-      { status: 500 }
-    );
+  let pushError: string | null = null;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
+  if (!apiBase) {
+    pushError = "NEXT_PUBLIC_API_URL is missing.";
+  } else {
+    try {
+      const pushResp = await fetch(`${apiBase}/api/admin/push/new-tours`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userIds: guideUserIds,
+          monthLabel,
+          count: rows.length,
+        }),
+      });
+      if (!pushResp.ok) {
+        const text = await pushResp.text();
+        pushError = text || `Push failed with ${pushResp.status}`;
+      }
+    } catch (err: any) {
+      pushError = err?.message || "Push failed";
+    }
   }
 
-  const tokens = (tokensRows ?? [])
-    .map((r) => r.expo_push_token)
-    .filter((t) => typeof t === "string" && isExpoToken(t));
-
-  const whenText = monthLabel ? ` for ${monthLabel}` : "";
-  const message = `New tours published${whenText}. You can consult your affected tour on the app.`;
-
-  await sendExpoPush(tokens, {
-    title: "New tours published",
-    body: message,
-    data: { type: "new_tours_published", month: monthLabel, count: rows.length },
-  });
-
-  return NextResponse.json({ ok: true, count: rows.length });
+  return NextResponse.json({ ok: true, count: rows.length, pushError });
 }
