@@ -27,6 +27,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Edit current month
               <span className="nav-pill">Planned</span>
             </Link>
+            <Link className="nav-link" href="/push">
+              Push notifications
+              <span className="nav-pill">Push</span>
+            </Link>
           </nav>
         </aside>
         <main className="shell-main">{children}</main>
