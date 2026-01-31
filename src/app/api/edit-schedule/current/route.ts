@@ -55,17 +55,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Not authorized." }, { status: 403 });
   }
 
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const startIso = toIsoDateLocal(monthStart);
-  const endIso = toIsoDateLocal(monthEnd);
-
   const { data: slots, error: sErr } = await adminClient
     .from("schedule_slots")
     .select("id, slot_date, slot_time, guide_id, status")
-    .gte("slot_date", startIso)
-    .lt("slot_date", endIso)
     .eq("status", "planned")
     .order("slot_date", { ascending: true })
     .order("slot_time", { ascending: true });
@@ -90,8 +82,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    startDate: startIso,
-    endDate: endIso,
     slots: slots ?? [],
     guides: guides ?? [],
   });

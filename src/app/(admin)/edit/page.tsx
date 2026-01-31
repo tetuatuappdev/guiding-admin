@@ -18,8 +18,6 @@ type SlotRow = {
 
 type ApiResponse = {
   ok: boolean;
-  startDate: string;
-  endDate: string;
   slots: SlotRow[];
   guides: GuideSummary[];
   error?: string;
@@ -35,7 +33,6 @@ const formatGuideName = (g: GuideSummary) => {
 export default function EditCurrentMonthPage() {
   const [slots, setSlots] = useState<SlotRow[]>([]);
   const [guides, setGuides] = useState<GuideSummary[]>([]);
-  const [range, setRange] = useState<{ start: string; end: string } | null>(null);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -74,7 +71,6 @@ export default function EditCurrentMonthPage() {
 
       setSlots(body.slots ?? []);
       setGuides(body.guides ?? []);
-      setRange({ start: body.startDate, end: body.endDate });
       setLoading(false);
     })();
   }, []);
@@ -144,8 +140,8 @@ export default function EditCurrentMonthPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Edit current month</h1>
-          <p className="page-subtitle">Update planned tours for the current month.</p>
+          <h1 className="page-title">Edit planned tours</h1>
+          <p className="page-subtitle">Update all planned tours, regardless of month.</p>
         </div>
         <span className="pill">{slots.length} tours</span>
       </div>
@@ -156,14 +152,7 @@ export default function EditCurrentMonthPage() {
 
       <div className="card soft">
         <div className="inline-actions">
-          <span className="muted">
-            {range
-              ? `For ${new Date(range.start + "T00:00:00").toLocaleDateString("en-GB", {
-                  month: "long",
-                  year: "numeric",
-                })}`
-              : "Current month"}
-          </span>
+          <span className="muted">All planned tours</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
             <button type="button" className="button ghost" onClick={onReset}>
               Reset
