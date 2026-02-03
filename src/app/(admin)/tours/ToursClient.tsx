@@ -23,6 +23,7 @@ export default function ToursClient() {
   const [month, setMonth] = useState("");
   const [includePaid, setIncludePaid] = useState(false);
   const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -145,6 +146,37 @@ export default function ToursClient() {
     })();
   }, [includePaid, month]);
 
+  const openMonthlyInvoice = async () => {
+    if (!month) return;
+    setErr(null);
+    setInvoiceLoading(true);
+    try {
+      let token = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+      if (!token) {
+        const refresh = await supabase.auth.refreshSession();
+        if (refresh.error) throw refresh.error;
+        token = refresh.data.session?.access_token ?? null;
+      }
+      if (!token) throw new Error("Not logged in.");
+
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "";
+      if (!apiBase) throw new Error("NEXT_PUBLIC_API_URL is missing.");
+
+      const resp = await fetch(`${apiBase}/api/admin/monthly-invoices/${month}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await resp.json();
+      if (!resp.ok || !body.ok || !body.url) {
+        throw new Error(body.error ?? "Invoice not available.");
+      }
+      window.open(body.url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setErr(e.message ?? "Failed to open invoice.");
+    } finally {
+      setInvoiceLoading(false);
+    }
+  };
+
   const totalAmount =
     rows.reduce((sum, r) => sum + (r.payment?.amount_pence ?? 0), 0) / 100;
 
@@ -192,6 +224,17 @@ export default function ToursClient() {
           >
             Include paid
           </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+            <button
+              type="button"
+              className="button ghost"
+              onClick={openMonthlyInvoice}
+              disabled={!month || invoiceLoading}
+              title={!month ? "Select a month first." : undefined}
+            >
+              {invoiceLoading ? "Opening..." : "Open month invoice"}
+            </button>
+          </div>
         </div>
       </section>
 
